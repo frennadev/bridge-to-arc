@@ -1,0 +1,5 @@
+.env.local
+.env
+server.mjs
+bridge.mjs
+node_modules
