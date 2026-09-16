@@ -108,7 +108,11 @@
   .wrow img,.wrow .ph{width:28px;height:28px;border-radius:8px;flex:0 0 28px;background:var(--line)}
   .wrow .ph{display:grid;place-items:center;font:11px var(--mono);color:var(--dim)}
   .wrow small{display:block;font:400 10.5px var(--mono);color:var(--dim)}
-  .wrow .tag{margin-left:auto;font:10px var(--mono);color:var(--ok)}
+  .wrow .tag{margin-left:auto;font:10px var(--mono);color:var(--ok);white-space:nowrap}
+  .wrow .tag.rec{color:var(--acc)}
+  .walletrec{font-size:11.5px;line-height:1.6;color:var(--dim);margin-top:12px;
+    padding-top:12px;border-top:1px solid var(--line)}
+  .walletrec b{color:var(--txt)}
   .wrow.dc{justify-content:center;color:var(--bad);border-style:dashed}
   .spin{display:inline-block;width:9px;height:9px;border:1.5px solid var(--acc);
     border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
@@ -239,6 +243,7 @@
   <footer>
     <button class="ghost sm" id="addArcBtn">Add Arc to wallet</button><br />
     Arc · chain 5042 · gas is USDC · <a href="https://explorer.arc.io" target="_blank" rel="noopener noreferrer">explorer</a><br />
+    Recommended wallet: <a href="https://rabby.io" target="_blank" rel="noopener noreferrer">Rabby</a><br />
     Non-custodial. Your wallet signs everything; we never hold your funds.
   </footer>
 </div>
@@ -248,6 +253,7 @@
     <div class="sheethead"><h3>Choose a wallet</h3>
       <button class="x" id="closePicker" aria-label="Close">&#10005;</button></div>
     <div id="walletList"></div>
+    <div class="walletrec" id="walletRec"></div>
     <div class="hint" id="walletEmpty" hidden>
       No wallet detected. Install MetaMask, Rabby, Coinbase Wallet or Rainbow &mdash;
       or open this page inside your wallet's built-in browser on mobile.

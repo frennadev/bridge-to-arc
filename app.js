@@ -122,6 +122,9 @@ const askWallets = () => window.dispatchEvent(new Event("eip6963:requestProvider
 askWallets();
 [100, 300, 800, 1500].forEach((t) => setTimeout(askWallets, t));
 
+const isRabby = (w) =>
+  /rabby/i.test(w.info.rdns || "") || /rabby/i.test(w.info.name || "") || !!w.provider?.isRabby;
+
 function candidates() {
   const list = [...wallets.values()];
   const seen = new Set(list.map((w) => w.provider));
@@ -135,6 +138,9 @@ function candidates() {
     list.push({ info: { rdns: "injected:" + name.toLowerCase().replace(/ /g, "-"), name, icon: null }, provider: p });
     seen.add(p);
   }
+  // Rabby first — it previews decoded calldata before you sign, which matters on a
+  // flow that asks for three signatures across two contracts.
+  list.sort((a, b) => (isRabby(b) ? 1 : 0) - (isRabby(a) ? 1 : 0));
   return list;
 }
 
@@ -152,12 +158,18 @@ function closePicker(ok) {
 function paintPicker() {
   const list = candidates();
   $("walletEmpty").hidden = list.length > 0;
+  $("walletRec").innerHTML = list.some(isRabby)
+    ? `<b>Rabby</b> is recommended — it shows you the decoded transaction before you sign.`
+    : `<b>Rabby</b> is recommended for this bridge: it decodes each transaction before you ` +
+      `sign it, so you can see exactly what you are approving. ` +
+      `<a href="https://rabby.io" target="_blank" rel="noopener noreferrer">rabby.io</a>`;
   $("walletList").innerHTML = list.map((w, i) =>
     `<button class="wrow" data-i="${i}">` +
       (w.info.icon ? `<img src="${w.info.icon}" alt="" />`
                    : `<span class="ph">${w.info.name.slice(0,2).toUpperCase()}</span>`) +
       `<span>${w.info.name}<small>${w.info.rdns}</small></span>` +
-      (wallet?.info.rdns === w.info.rdns && account ? `<span class="tag">connected</span>` : "") +
+      (wallet?.info.rdns === w.info.rdns && account ? `<span class="tag">connected</span>`
+        : isRabby(w) ? `<span class="tag rec">recommended</span>` : "") +
     `</button>`).join("") +
     (account ? `<button class="wrow dc" data-dc="1">Disconnect</button>` : "");
   $("walletList").querySelectorAll("button").forEach((b) => {
