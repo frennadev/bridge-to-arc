@@ -66,7 +66,8 @@ const server = createServer(async (req, res) => {
 
   try {
     // JSON-RPC proxy for Arc. Key stays here.
-    if (url.pathname === "/rpc/arc" && req.method === "POST") {
+    // /api/rpc mirrors the Vercel serverless route so local dev matches production.
+    if ((url.pathname === "/rpc/arc" || url.pathname === "/api/rpc") && req.method === "POST") {
       const body = await readBody(req);
       const r = await fetch(ARC_RPC_URL, {
         method: "POST",

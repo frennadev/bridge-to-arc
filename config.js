@@ -10,9 +10,10 @@ window.CONFIG = {
   // Your cut, in basis points. 100 = 1%.
   FEE_BPS: 100,
 
-  // Public Arc endpoint. Supports CORS from any origin, so no proxy is needed.
-  // Swap for a private RPC only if you put it behind your own serverless route —
-  // never paste a keyed URL here, it would be public.
+  // Public fallback only, used if /api/rpc is unavailable.
+  // The real endpoint lives in the ARC_RPC_URL environment variable on Vercel and is
+  // served through /api/rpc, so it never reaches a browser. Never paste a keyed URL
+  // here — this file ships to every visitor.
   ARC_RPC: "https://rpc.mainnet.arc.io",
 
   BRAND: "Bridge to Arc",

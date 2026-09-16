@@ -61,9 +61,28 @@ const TREASURY = (() => {
 })();
 
 /* ---------- rpc helpers (no backend) ---------- */
+// Prefer the serverless proxy (/api/rpc) so the upstream RPC URL stays server-side.
+// If it isn't deployed — local dev, or a static host without functions — fall back to
+// the public endpoint. A JSON-RPC *error* is a real answer and propagates; only a
+// transport or HTTP failure disables the proxy.
+let useProxy = true;
 async function arcRpc(method, params) {
-  const r = await fetch(ARC.rpc, { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+  const headers = { "content-type": "application/json" };
+  const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method, params });
+
+  if (useProxy) {
+    let j = null;
+    try {
+      const r = await fetch("/api/rpc", { method: "POST", headers, body });
+      if (r.ok) j = await r.json(); else useProxy = false;
+    } catch { useProxy = false; }
+    if (j) {
+      if (j.error) throw new Error(j.error.message);
+      return j.result;
+    }
+  }
+
+  const r = await fetch(ARC.rpc, { method: "POST", headers, body });
   const j = await r.json();
   if (j.error) throw new Error(j.error.message);
   return j.result;

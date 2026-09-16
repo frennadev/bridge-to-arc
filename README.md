@@ -11,34 +11,67 @@ the platform fee.
 vercel deploy --prod
 ```
 
-Static, no build step, no `package.json` needed. `vercel.json` sets the security headers
-and caches `/vendor/*` immutably.
+Zero config: no build step, no `package.json`, no dependencies. Vercel serves the root as
+static files and turns `api/rpc.mjs` into a serverless function at `/api/rpc`.
 
-**Before the first deploy, edit `config.js`:**
+### One environment variable
+
+In **Project -> Settings -> Environment Variables**, or via CLI:
+
+```bash
+vercel env add ARC_RPC_URL production
+# paste your Alchemy Arc URL when prompted
+```
+
+`ARC_RPC_URL` is read only by `api/rpc.mjs`, on the server. It is never bundled, never
+sent to a browser, and never appears in a network response. See `.env.example`.
+
+If the variable is unset the proxy falls back to Arc's public endpoint, so the site still
+works — just without your dedicated throughput.
+
+### Before the first deploy, edit `config.js`
 
 ```js
 window.CONFIG = {
   TREASURY: "0xYourFeeWallet",   // REQUIRED — app refuses to run while unset
   FEE_BPS: 100,                  // 100 = 1%
-  ARC_RPC: "https://rpc.mainnet.arc.io",
+  ARC_RPC: "https://rpc.mainnet.arc.io",  // public fallback only
   BRAND: "Bridge to Arc",
 };
 ```
 
-`config.js` ships to every visitor. Nothing secret goes in it. `.vercelignore` keeps
-`.env.local`, `server.mjs` and `bridge.mjs` out of the deployment.
+`config.js` ships to every visitor. Nothing secret goes in it.
 
-If `TREASURY` is the zero address the app disables bridging and shows a banner, so a
-misconfigured deploy can never silently send fees to the burn address.
+## Keeping the RPC key private
 
-## No backend
+The browser never sees the upstream URL. It calls `/api/rpc` on your own domain, and the
+function forwards to `ARC_RPC_URL`.
 
-The page talks only to the user's wallet, Circle's Iris API, and Arc's public RPC — all of
-which allow cross-origin browser calls. There is no proxy and no API key anywhere in the
-deployment.
+`/api/rpc` is still a public endpoint, so it is deliberately narrow:
 
-`server.mjs` is a local dev convenience only (`node server.mjs` → localhost:5173).
-It is excluded from the deploy.
+| Guard | Behaviour |
+|---|---|
+| Method allowlist | Only 7 read-only methods. `eth_sendRawTransaction`, `debug_*`, `trace_*` all rejected |
+| Origin check | Same-origin and localhost only, unless `ALLOWED_ORIGINS` is set |
+| Batch limit | 10 calls per request |
+| Body limit | 128 KB |
+| Verb | POST only |
+
+Wallets broadcast their own transactions directly and never route through this proxy,
+which is why no write method needs to be allowed.
+
+This protects the key and stops casual abuse. It does **not** stop a determined caller
+from spending your quota — the endpoint is discoverable by anyone who opens devtools.
+**Set a spend cap in the Alchemy dashboard.**
+
+## Local development
+
+```bash
+node server.mjs   # http://127.0.0.1:5173
+```
+
+`server.mjs` mirrors the `/api/rpc` route so local behaviour matches production. It reads
+`ARC_RPC_URL` from `.env.local`. It is excluded from the deploy.
 
 ## How a bridge works
 
