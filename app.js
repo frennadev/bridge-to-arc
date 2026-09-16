@@ -17,7 +17,7 @@ const TOKEN_MESSENGER = "0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"; // same on
 const SOURCES = [
   { key:"base",     name:"Base",      domain:6, chainId:8453,  hex:"0x2105", usdc:"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", explorer:"https://basescan.org",  rpc:"https://mainnet.base.org",             sym:"ETH",  fast:true,  note:"cheapest gas" },
   { key:"arbitrum", name:"Arbitrum",  domain:3, chainId:42161, hex:"0xa4b1", usdc:"0xaf88d065e77c8cC2239327C5EDb3A432268e5831", explorer:"https://arbiscan.io",   rpc:"https://arb1.arbitrum.io/rpc",         sym:"ETH",  fast:true },
-  { key:"optimism", name:"OP Mainnet",domain:2, chainId:10,    hex:"0xa",    usdc:"0x0b2C639c533813f8Aa73DaC3A0d51fF37b6E5159", explorer:"https://optimistic.etherscan.io", rpc:"https://mainnet.optimism.io", sym:"ETH",  fast:true },
+  { key:"optimism", name:"OP Mainnet",domain:2, chainId:10,    hex:"0xa",    usdc:"0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", explorer:"https://optimistic.etherscan.io", rpc:"https://mainnet.optimism.io", sym:"ETH",  fast:true },
   { key:"ethereum", name:"Ethereum",  domain:0, chainId:1,     hex:"0x1",    usdc:"0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", explorer:"https://etherscan.io",  rpc:"https://eth.llamarpc.com",             sym:"ETH",  fast:true },
   { key:"polygon",  name:"Polygon",   domain:7, chainId:137,   hex:"0x89",   usdc:"0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", explorer:"https://polygonscan.com", rpc:"https://polygon-rpc.com",            sym:"POL",  fast:false },
   { key:"avalanche",name:"Avalanche", domain:1, chainId:43114, hex:"0xa86a", usdc:"0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", explorer:"https://snowtrace.io", rpc:"https://api.avax.network/ext/bc/C/rpc", sym:"AVAX", fast:false },
