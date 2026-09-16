@@ -340,7 +340,7 @@ const TKEY = "arcbridge.tx";
 let tx = (() => { try { return JSON.parse(localStorage.getItem(TKEY)); } catch { return null; } })();
 const saveTx = () => tx ? localStorage.setItem(TKEY, JSON.stringify(tx)) : localStorage.removeItem(TKEY);
 
-const STEPS = ["Approve USDC", "Platform fee", "Burn on source", "Circle mints on Arc"];
+const STEPS = ["Approve USDC", "Bridge fee", "Bridge to Arc", "Circle mints on Arc"];
 function paintSteps() {
   if (!tx) { $("progCard").hidden = true; return; }
   $("progCard").hidden = false;
@@ -390,7 +390,7 @@ async function run() {
       }
 
       if (!tx.feeHash && platform > 0n) {
-        step(1, "act", `Sending ${fmt(platform)} USDC platform fee…`);
+        step(1, "act", `Confirm the ${fmt(platform)} USDC bridge fee…`);
         const f = await signer.sendTransaction({ to: c.usdc,
           data: erc20.encodeFunctionData("transfer", [TREASURY, platform]) });
         tx.feeHash = f.hash; saveTx();
