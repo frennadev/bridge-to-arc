@@ -307,6 +307,10 @@ async function refresh() {
   const h = $("amtHint");
   const v = amt ? quote(amt) : null;
   if ($("amtIn").value.trim() && !amt) { h.textContent = "Enter a positive amount (max 6 decimals)."; h.className = "hint bad"; }
+  else if (srcBal === 0n) {
+    h.textContent = `No USDC on ${c.name}. Swap to native USDC there first, or choose a different chain.`;
+    h.className = "hint bad";
+  }
   else if (amt && srcBal != null && amt > srcBal) { h.textContent = `You only have ${fmt(srcBal)} USDC on ${c.name}.`; h.className = "hint bad"; }
   else if (v && v.received <= 0n) { h.textContent = "Too small — fees exceed the amount."; h.className = "hint bad"; }
   else if (v) {
@@ -326,6 +330,7 @@ async function refresh() {
   b.textContent = !TREASURY ? "Not configured"
     : !account ? "Connect wallet"
     : chainIdNow !== c.chainId ? `Switch to ${c.name}`
+    : srcBal === 0n ? `No USDC on ${c.name}`
     : amt ? `Bridge ${fmt(amt)} USDC` : "Bridge";
 }
 
