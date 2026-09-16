@@ -66,27 +66,42 @@ const TREASURY = (() => {
 // the public endpoint. A JSON-RPC *error* is a real answer and propagates; only a
 // transport or HTTP failure disables the proxy.
 let useProxy = true;
-async function arcRpc(method, params) {
+const publicRpcFor = (chain) =>
+  chain === "arc" ? ARC.rpc : SOURCES.find((c) => c.key === chain)?.rpc;
+
+// Reads for any supported chain go through /api/rpc, which keeps the upstream key
+// server-side. Falls back to the public endpoint when the function isn't deployed
+// (local static serving) or the upstream is failing. A JSON-RPC error is a real
+// answer and propagates rather than triggering fallback.
+async function rpc(chain, method, params) {
   const headers = { "content-type": "application/json" };
   const body = JSON.stringify({ jsonrpc: "2.0", id: 1, method, params });
 
   if (useProxy) {
-    let j = null;
     try {
-      const r = await fetch("/api/rpc", { method: "POST", headers, body });
-      if (r.ok) j = await r.json(); else useProxy = false;
-    } catch { useProxy = false; }
-    if (j) {
-      if (j.error) throw new Error(j.error.message);
-      return j.result;
+      const r = await fetch(`/api/rpc?chain=${encodeURIComponent(chain)}`, { method: "POST", headers, body });
+      if (r.ok) {
+        const j = await r.json();
+        if (j.error) throw new Error(j.error.message);
+        return j.result;
+      }
+      // 404/405 means there is no function here at all; anything else is a
+      // per-request upstream problem, so only give up on the proxy for the former.
+      if (r.status === 404 || r.status === 405) useProxy = false;
+    } catch (e) {
+      if (e instanceof TypeError) useProxy = false; else throw e;
     }
   }
 
-  const r = await fetch(ARC.rpc, { method: "POST", headers, body });
+  const url = publicRpcFor(chain);
+  if (!url) throw new Error(`no endpoint for chain ${chain}`);
+  const r = await fetch(url, { method: "POST", headers, body });
   const j = await r.json();
   if (j.error) throw new Error(j.error.message);
   return j.result;
 }
+
+const arcRpc = (method, params) => rpc("arc", method, params);
 async function iris(path) {
   const r = await fetch(IRIS + path, { headers: { accept: "application/json" } });
   return { status: r.status, body: await r.json().catch(() => null) };
@@ -276,9 +291,8 @@ function paintQuote() {
 /* ---------- validation ---------- */
 let srcBal = null, allowance = null, running = false;
 
-async function srcRead(fn, args, to) {
-  const res = await eth().request({ method: "eth_call",
-    params: [{ to, data: erc20.encodeFunctionData(fn, args) }, "latest"] });
+async function srcRead(fn, args, to, chainKey) {
+  const res = await rpc(chainKey, "eth_call", [{ to, data: erc20.encodeFunctionData(fn, args) }, "latest"]);
   return erc20.decodeFunctionResult(fn, res)[0];
 }
 
@@ -294,11 +308,13 @@ async function refresh() {
   $("rcpIn").classList.toggle("bad", rv.length > 0 && !rcp);
   $("rcpHint").textContent = rcp ? "Receives on Arc · no gas needed there" : "Where the USDC lands on Arc.";
 
+  // Read balances on the selected chain regardless of which network the wallet is on,
+  // so switching chains in the dropdown shows a balance immediately.
   srcBal = allowance = null;
-  if (account && chainIdNow === c.chainId) {
+  if (account) {
     try {
-      srcBal = await srcRead("balanceOf", [account], c.usdc);
-      allowance = await srcRead("allowance", [account, TOKEN_MESSENGER], c.usdc);
+      srcBal = await srcRead("balanceOf", [account], c.usdc, c.key);
+      allowance = await srcRead("allowance", [account, TOKEN_MESSENGER], c.usdc, c.key);
     } catch {}
   }
   $("balLbl").textContent = srcBal == null ? "" : `balance ${fmt(srcBal)}`;
@@ -383,7 +399,7 @@ async function run() {
       const signer = await provider().getSigner();
       const from = ethers.getAddress(await signer.getAddress());
 
-      const have = await srcRead("allowance", [from, TOKEN_MESSENGER], c.usdc);
+      const have = await srcRead("allowance", [from, TOKEN_MESSENGER], c.usdc, c.key);
       if (have >= burn) step(0, "done", `Already approved`);
       else {
         step(0, "act", "Approve in your wallet…");
@@ -565,7 +581,19 @@ $("connectBtn").onclick = () => connect({ force: true });
 $("closePicker").onclick = () => closePicker(false);
 $("walletModal").onclick = (e) => { if (e.target.id === "walletModal") closePicker(false); };
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("walletModal").hidden) closePicker(false); });
-$("srcSel").onchange = loadFee;
+$("srcSel").onchange = async () => {
+  loadFee();
+  const c = src();
+  if (!account || chainIdNow === c.chainId) return;
+  try { await switchChain(c.hex, addFor(c)); }
+  catch (e) {
+    // A rejected switch is not an error worth shouting about — the Bridge button
+    // still offers to switch when they are ready.
+    if (!/user rejected|ACTION_REJECTED|4001/i.test(String(e?.message || e))) 
+      alertIn("routeAlert", "warn", errMsg(e));
+  }
+  refresh();
+};
 $("amtIn").oninput = refresh;
 $("rcpIn").oninput = refresh;
 $("maxBtn").onclick = () => { if (srcBal != null) { $("amtIn").value = fmt(srcBal); refresh(); } };

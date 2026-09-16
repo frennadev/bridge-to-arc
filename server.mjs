@@ -19,6 +19,13 @@ const env = Object.fromEntries(
 );
 
 const ARC_RPC_URL = env.ARC_RPC_URL || "https://rpc.mainnet.arc.io";
+const KEY = ARC_RPC_URL.includes("/v2/") ? ARC_RPC_URL.split("/v2/")[1].trim() : "";
+const SUB = { ethereum:"eth-mainnet", base:"base-mainnet", arbitrum:"arb-mainnet",
+              optimism:"opt-mainnet", polygon:"polygon-mainnet", avalanche:"avax-mainnet", arc:"arc-mainnet" };
+const PUB = { ethereum:"https://ethereum-rpc.publicnode.com", base:"https://mainnet.base.org",
+              arbitrum:"https://arb1.arbitrum.io/rpc", optimism:"https://optimism-rpc.publicnode.com",
+              polygon:"https://polygon-bor-rpc.publicnode.com",
+              avalanche:"https://avalanche-c-chain-rpc.publicnode.com", arc:"https://rpc.mainnet.arc.io" };
 const IRIS = "https://iris-api.circle.com";
 const PORT = Number(env.PORT || 5173);
 
@@ -69,12 +76,19 @@ const server = createServer(async (req, res) => {
     // /api/rpc mirrors the Vercel serverless route so local dev matches production.
     if ((url.pathname === "/rpc/arc" || url.pathname === "/api/rpc") && req.method === "POST") {
       const body = await readBody(req);
-      const r = await fetch(ARC_RPC_URL, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body,
-      });
-      return send(res, r.status, await r.text(), "application/json", origin);
+      const chain = (url.searchParams.get("chain") || "arc").toLowerCase();
+      const targets = [];
+      if (KEY && SUB[chain]) targets.push(`https://${SUB[chain]}.g.alchemy.com/v2/${KEY}`);
+      if (PUB[chain]) targets.push(PUB[chain]);
+      for (const t of targets) {
+        try {
+          const r = await fetch(t, { method: "POST", headers: { "content-type": "application/json" }, body });
+          if (r.status === 403 && t.includes("alchemy")) continue; // network not on the key
+          if (!r.ok) continue;
+          return send(res, 200, await r.text(), "application/json", origin);
+        } catch {}
+      }
+      return send(res, 502, JSON.stringify({ error: "no upstream reachable" }), "application/json", origin);
     }
 
     // Circle Iris proxy (sidesteps any CORS surprises).
